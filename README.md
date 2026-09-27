@@ -10,8 +10,10 @@ The first vertical slice is implemented with a single full-stack Next.js applica
 - Yarn package management
 - Mantine UI
 - Zod request validation
-- In-memory claim workflow for development
-- PostgreSQL/Prisma integration planned for the next slice
+- One-time claim links with PostgreSQL persistence
+- Prefilled non-sensitive fields
+- AES-256-GCM encrypted resource versions
+- PostgreSQL via Prisma
 
 Implemented now:
 
@@ -63,4 +65,4 @@ See [`docs/requirements.md`](docs/requirements.md) and [`docs/architecture.md`](
 
 ## Security note
 
-The current development claim store is in-memory and is not production-ready. Before deployment, claim records and secret payloads must be persisted in PostgreSQL with authenticated encryption, hashed claim tokens, expiry enforcement and account/bot policies.
+Production deployment requires a strong external `ENCRYPTION_KEY`, Tailscale access control and account/bot policies. Claim records use hashed one-time tokens; submitted payloads are stored as authenticated AES-256-GCM ciphertext in PostgreSQL.

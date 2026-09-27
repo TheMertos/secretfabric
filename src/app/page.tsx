@@ -17,6 +17,8 @@ import {
 } from "@mantine/core";
 import { ResourceSchema } from "@/lib/schema-catalog";
 
+const BASE_PATH = "";
+
 export default function Home() {
   const [schemas, setSchemas] = useState<ResourceSchema[]>([]);
   const [opened, setOpened] = useState(false);
@@ -25,12 +27,12 @@ export default function Home() {
   const [claimUrl, setClaimUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/schemas").then((response) => response.json()).then(setSchemas);
+    fetch(`${BASE_PATH}/api/schemas`).then((response) => response.json()).then(setSchemas);
   }, []);
 
   async function createClaim() {
     if (!name || !type) return;
-    const response = await fetch("/api/claims", {
+    const response = await fetch(`${BASE_PATH}/api/claims`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name, type }),
@@ -67,8 +69,8 @@ export default function Home() {
               <Stack gap="xs">
                 <Text fw={700}>Claim link created</Text>
                 <Text size="sm" c="dimmed">Open this one-time link to enter sensitive fields:</Text>
-                <TextInput value={`${window.location.origin}${claimUrl}`} readOnly />
-                <Button component="a" href={claimUrl} target="_blank" variant="light" w="fit-content">Open claim form</Button>
+                <TextInput value={`${window.location.origin}${BASE_PATH}${claimUrl}`} readOnly />
+                <Button component="a" href={`${BASE_PATH}${claimUrl}`} target="_blank" variant="light" w="fit-content">Open claim form</Button>
               </Stack>
             </Card>
           )}

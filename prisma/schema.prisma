@@ -41,6 +41,7 @@ model Resource {
   accountId       String            @db.Uuid
   resourceType    String
   name            String
+  metadata        Json?
   currentVersion  Int               @default(1)
   status          String            @default("active")
   createdAt       DateTime          @default(now())

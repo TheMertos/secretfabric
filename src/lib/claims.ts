@@ -1,43 +1,112 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client";
+import { prisma } from "./prisma";
+import { encryptJson } from "./crypto";
 import { getSchema } from "./schema-catalog";
 
-type Claim = {
-  token: string;
+const CLAIM_TTL_SECONDS = 900;
+const DEFAULT_ACCOUNT = "mert-personal";
+
+type CreateClaimInput = {
   name: string;
   type: string;
   provider?: string;
-  createdAt: number;
-  expiresAt: number;
-  usedAt?: number;
-  data?: Record<string, unknown>;
+  prefill?: Record<string, string>;
 };
 
-const claims = new Map<string, Claim>();
-const CLAIM_TTL_SECONDS = 900;
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
 
-export function createClaim(input: { name: string; type: string; provider?: string }) {
+function setPath(root: Record<string, unknown>, path: string, value: unknown) {
+  const parts = path.split(".");
+  let current = root;
+  parts.forEach((part, index) => {
+    if (index === parts.length - 1) current[part] = value;
+    else {
+      current[part] ??= {};
+      current = current[part] as Record<string, unknown>;
+    }
+  });
+}
+
+async function getDefaultAccount() {
+  return prisma.account.upsert({
+    where: { slug: DEFAULT_ACCOUNT },
+    update: {},
+    create: { slug: DEFAULT_ACCOUNT, displayName: "Mert Personal" },
+  });
+}
+
+export async function createClaim(input: CreateClaimInput) {
   if (!getSchema(input.type)) throw new Error("Unknown schema type");
+  const account = await getDefaultAccount();
   const token = randomBytes(32).toString("base64url");
-  const now = Date.now();
-  claims.set(token, {
-    token,
-    ...input,
-    createdAt: now,
-    expiresAt: now + CLAIM_TTL_SECONDS * 1000,
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + CLAIM_TTL_SECONDS * 1000);
+  const resource = await prisma.resource.create({
+    data: {
+      accountId: account.id,
+      resourceType: input.type,
+      name: input.name,
+      metadata: { provider: input.provider ?? null, prefill: input.prefill ?? {} },
+    },
+  });
+  await prisma.claim.create({
+    data: { resourceId: resource.id, tokenHash: hashToken(token), expiresAt, createdBy: "hermes" },
   });
   return { token, name: input.name, type: input.type, expiresInSeconds: CLAIM_TTL_SECONDS };
 }
 
-export function getClaim(token: string) {
-  const claim = claims.get(token);
-  if (!claim || claim.usedAt || claim.expiresAt <= Date.now()) return undefined;
+export async function getClaim(token: string) {
+  const claim = await prisma.claim.findUnique({
+    where: { tokenHash: hashToken(token) },
+    include: { resource: true },
+  });
+  if (!claim || claim.usedAt || claim.expiresAt <= new Date()) return undefined;
   return claim;
 }
 
-export function completeClaim(token: string, data: Record<string, unknown>) {
-  const claim = getClaim(token);
+export async function getClaimForm(token: string) {
+  const claim = await getClaim(token);
+  if (!claim) return undefined;
+  const schema = getSchema(claim.resource.resourceType)!;
+  const metadata = (claim.resource.metadata ?? {}) as { provider?: string; prefill?: Record<string, string> };
+  return {
+    name: claim.resource.name,
+    type: claim.resource.resourceType,
+    provider: metadata.provider,
+    fields: schema.fields.map((field) => ({
+      ...field,
+      value: field.sensitive || field.claimOnly ? undefined : metadata.prefill?.[field.path] ?? field.defaultValue,
+    })),
+  };
+}
+
+export async function completeClaim(token: string, data: Record<string, unknown>) {
+  const claim = await getClaim(token);
   if (!claim) return false;
-  claim.usedAt = Date.now();
-  claim.data = data;
-  return true;
+  const metadata = (claim.resource.metadata ?? {}) as { prefill?: Record<string, string> };
+  const payload: Record<string, unknown> = {};
+  Object.entries(metadata.prefill ?? {}).forEach(([path, value]) => setPath(payload, path, value));
+  Object.assign(payload, data);
+  const encrypted = encryptJson(payload);
+  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const marked = await tx.claim.updateMany({
+      where: { id: claim.id, usedAt: null, expiresAt: { gt: new Date() } },
+      data: { usedAt: new Date() },
+    });
+    if (marked.count !== 1) return false;
+    await tx.resourceVersion.create({
+      data: {
+        resourceId: claim.resourceId,
+        version: 1,
+        encryptedPayload: encrypted.ciphertext,
+        payloadNonce: encrypted.nonce,
+        createdBy: "claim",
+      },
+    });
+    return true;
+  });
+  return updated;
 }

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Card, PasswordInput, Select, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
 import { FieldSchema } from "@/lib/schema-catalog";
 
+const BASE_PATH = "";
+
 function setPath(root: Record<string, unknown>, path: string, value: string) {
   const parts = path.split(".");
   let current = root;
@@ -25,7 +27,7 @@ export default function ClaimPage({ params }: { params: Promise<{ token: string 
   useEffect(() => {
     params.then(({ token: resolvedToken }) => {
       setToken(resolvedToken);
-      fetch(`/api/claims/${resolvedToken}`).then(async (response) => {
+      fetch(`${BASE_PATH}/api/claims/${resolvedToken}`).then(async (response) => {
         if (!response.ok) return setStatus("error");
         setMeta(await response.json());
         setStatus("ready");
@@ -37,7 +39,7 @@ export default function ClaimPage({ params }: { params: Promise<{ token: string 
     if (!token || !meta) return;
     const data: Record<string, unknown> = {};
     Object.entries(values).forEach(([path, value]) => setPath(data, path, value));
-    const response = await fetch(`/api/claims/${token}`, {
+    const response = await fetch(`${BASE_PATH}/api/claims/${token}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ data }),

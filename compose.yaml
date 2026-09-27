@@ -6,6 +6,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://secretfabric:change-me@postgres:5432/secretfabric
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     depends_on:
       postgres:
         condition: service_healthy
