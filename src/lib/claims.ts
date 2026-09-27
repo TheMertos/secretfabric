@@ -44,8 +44,14 @@ export async function createClaim(input: CreateClaimInput) {
   const token = randomBytes(32).toString("base64url");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + CLAIM_TTL_SECONDS * 1000);
-  const resource = await prisma.resource.create({
-    data: {
+  const resource = await prisma.resource.upsert({
+    where: { accountId_name: { accountId: account.id, name: input.name } },
+    update: {
+      resourceType: input.type,
+      metadata: { provider: input.provider ?? null, prefill: input.prefill ?? {} },
+      status: "active",
+    },
+    create: {
       accountId: account.id,
       resourceType: input.type,
       name: input.name,
@@ -105,14 +111,23 @@ export async function completeClaim(token: string, data: Record<string, unknown>
       data: { usedAt: new Date() },
     });
     if (marked.count !== 1) return false;
+    const latestVersion = await tx.resourceVersion.aggregate({
+      where: { resourceId: claim.resourceId },
+      _max: { version: true },
+    });
+    const nextVersion = (latestVersion._max.version ?? 0) + 1;
     await tx.resourceVersion.create({
       data: {
         resourceId: claim.resourceId,
-        version: 1,
+        version: nextVersion,
         encryptedPayload: encrypted.ciphertext,
         payloadNonce: encrypted.nonce,
         createdBy: "claim",
       },
+    });
+    await tx.resource.update({
+      where: { id: claim.resourceId },
+      data: { currentVersion: nextVersion },
     });
     return true;
   });

@@ -23,6 +23,7 @@ function setPath(root: Record<string, unknown>, path: string, value: string) {
 export default function ClaimPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [meta, setMeta] = useState<ClaimMeta>();
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<"loading" | "ready" | "submitted" | "error">("loading");
 
   useEffect(() => {
@@ -66,7 +67,24 @@ export default function ClaimPage({ params }: { params: Promise<{ token: string 
             {meta.fields.map((field) => {
               const value = field.value ?? field.defaultValue ?? "";
               const common = { name: field.path, label: field.label, required: field.required, defaultValue: value };
-              if (field.input === "password") return <TextInput key={field.path} {...common} type="password" description="Sensitive field" />;
+              if (field.input === "password") return (
+                <TextInput
+                  key={field.path}
+                  {...common}
+                  type={visiblePasswords[field.path] ? "text" : "password"}
+                  description="Sensitive field"
+                  rightSection={
+                    <button
+                      type="button"
+                      aria-label={visiblePasswords[field.path] ? "Hide password" : "Show password"}
+                      onClick={() => setVisiblePasswords((current) => ({ ...current, [field.path]: !current[field.path] }))}
+                    >
+                      {visiblePasswords[field.path] ? "Hide" : "Show"}
+                    </button>
+                  }
+                  rightSectionPointerEvents="all"
+                />
+              );
               if (field.input === "textarea") return <Textarea key={field.path} {...common} autosize minRows={4} />;
               if (field.input === "select") return <Select key={field.path} name={field.path} label={field.label} data={field.options ?? []} defaultValue={value || null} required={field.required} />;
               return <TextInput key={field.path} {...common} type={field.input === "port" ? "number" : field.input === "url" ? "url" : "text"} />;
