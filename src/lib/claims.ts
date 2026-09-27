@@ -63,8 +63,16 @@ export async function getClaim(token: string) {
     where: { tokenHash: hashToken(token) },
     include: { resource: true },
   });
-  if (!claim || claim.usedAt || claim.expiresAt <= new Date()) return undefined;
+  if (!claim || claim.usedAt || claim.revokedAt || claim.expiresAt <= new Date()) return undefined;
   return claim;
+}
+
+export async function revokeClaim(token: string) {
+  const result = await prisma.claim.updateMany({
+    where: { tokenHash: hashToken(token), usedAt: null, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  return result.count === 1;
 }
 
 export async function getClaimForm(token: string) {

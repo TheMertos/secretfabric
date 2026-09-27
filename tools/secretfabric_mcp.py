@@ -70,6 +70,12 @@ def secretfabric_create_claim(
     )
 
 
+@mcp.tool()
+def secretfabric_revoke_claim(token: str) -> dict[str, Any]:
+    """Invalidate a pending one-time claim link before it is submitted."""
+    return request(f"/api/claims/{token}", method="DELETE")
+
+
 if __name__ == "__main__":
     import asyncio
 

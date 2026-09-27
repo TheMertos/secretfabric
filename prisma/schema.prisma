@@ -88,6 +88,7 @@ model Claim {
   tokenHash       String    @unique
   expiresAt       DateTime
   usedAt          DateTime?
+  revokedAt       DateTime?
   createdBy       String?
   createdAt       DateTime  @default(now())
   resource        Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
