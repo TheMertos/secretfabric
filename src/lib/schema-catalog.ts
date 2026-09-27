@@ -7,6 +7,7 @@ export type FieldSchema = {
   claimOnly?: boolean;
   defaultValue?: string;
   options?: string[];
+  value?: string;
 };
 
 export type ResourceSchema = {

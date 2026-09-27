@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Alert, Button, Card, PasswordInput, Select, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
+import { use, useEffect, useState } from "react";
+import { Alert, Button, Card, Select, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
 import { FieldSchema } from "@/lib/schema-catalog";
 
 const BASE_PATH = "";
+
+type ClaimMeta = { name: string; type: string; fields: FieldSchema[] };
 
 function setPath(root: Record<string, unknown>, path: string, value: string) {
   const parts = path.split(".");
@@ -19,26 +21,28 @@ function setPath(root: Record<string, unknown>, path: string, value: string) {
 }
 
 export default function ClaimPage({ params }: { params: Promise<{ token: string }> }) {
-  const [token, setToken] = useState<string>();
-  const [meta, setMeta] = useState<{ name: string; type: string; fields: FieldSchema[] }>();
-  const [values, setValues] = useState<Record<string, string>>({});
+  const { token } = use(params);
+  const [meta, setMeta] = useState<ClaimMeta>();
   const [status, setStatus] = useState<"loading" | "ready" | "submitted" | "error">("loading");
 
   useEffect(() => {
-    params.then(({ token: resolvedToken }) => {
-      setToken(resolvedToken);
-      fetch(`${BASE_PATH}/api/claims/${resolvedToken}`).then(async (response) => {
+    fetch(`${BASE_PATH}/api/claims/${token}`)
+      .then(async (response) => {
         if (!response.ok) return setStatus("error");
         setMeta(await response.json());
         setStatus("ready");
-      });
-    });
-  }, [params]);
+      })
+      .catch(() => setStatus("error"));
+  }, [token]);
 
-  async function submit() {
-    if (!token || !meta) return;
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!meta) return;
     const data: Record<string, unknown> = {};
-    Object.entries(values).forEach(([path, value]) => setPath(data, path, value));
+    for (const field of meta.fields) {
+      const value = new FormData(event.currentTarget).get(field.path);
+      if (typeof value === "string" && value.length > 0) setPath(data, field.path, value);
+    }
     const response = await fetch(`${BASE_PATH}/api/claims/${token}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -55,23 +59,21 @@ export default function ClaimPage({ params }: { params: Promise<{ token: string 
   return (
     <main className="claim-page">
       <Card withBorder radius="lg" maw={720} w="100%" p="xl">
-        <Stack>
-          <Title order={2}>Complete secret: {meta.name}</Title>
-          <Text c="dimmed">Schema: {meta.type}. Sensitive values are submitted once and are not shown again.</Text>
-          {meta.fields.map((field) => {
-            const common = {
-              label: field.label,
-              required: field.required,
-              value: values[field.path] ?? field.defaultValue ?? "",
-              onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setValues((current) => ({ ...current, [field.path]: event.currentTarget.value })),
-            };
-            if (field.input === "password") return <PasswordInput key={field.path} {...common} description="Sensitive field" />;
-            if (field.input === "textarea") return <Textarea key={field.path} {...common} autosize minRows={4} />;
-            if (field.input === "select") return <Select key={field.path} label={field.label} data={field.options ?? []} value={values[field.path] ?? field.defaultValue ?? null} onChange={(value) => setValues((current) => ({ ...current, [field.path]: value ?? "" }))} required={field.required} />;
-            return <TextInput key={field.path} {...common} type={field.input === "port" ? "number" : field.input === "url" ? "url" : "text"} />;
-          })}
-          <Button onClick={submit}>Save encrypted secret</Button>
-        </Stack>
+        <form onSubmit={submit}>
+          <Stack>
+            <Title order={2}>Complete secret: {meta.name}</Title>
+            <Text c="dimmed">Schema: {meta.type}. Sensitive values are submitted once and are not shown again.</Text>
+            {meta.fields.map((field) => {
+              const value = field.value ?? field.defaultValue ?? "";
+              const common = { name: field.path, label: field.label, required: field.required, defaultValue: value };
+              if (field.input === "password") return <TextInput key={field.path} {...common} type="password" description="Sensitive field" />;
+              if (field.input === "textarea") return <Textarea key={field.path} {...common} autosize minRows={4} />;
+              if (field.input === "select") return <Select key={field.path} name={field.path} label={field.label} data={field.options ?? []} defaultValue={value || null} required={field.required} />;
+              return <TextInput key={field.path} {...common} type={field.input === "port" ? "number" : field.input === "url" ? "url" : "text"} />;
+            })}
+            <Button type="submit">Save encrypted secret</Button>
+          </Stack>
+        </form>
       </Card>
     </main>
   );
