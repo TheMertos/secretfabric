@@ -46,16 +46,16 @@ Temel prensipler:
 
 ## 3. Önerilen teknoloji
 
-- Backend: FastAPI + Python
-- Database: PostgreSQL
-- Frontend: Next.js veya SvelteKit
+- Next.js App Router + Route Handlers
+- Database: PostgreSQL via Prisma
+- Frontend: Next.js + Mantine
 - Deployment: Docker Compose
 - HTTPS/network: Tailscale Serve HTTPS
-- Encryption: libsodium XChaCha20-Poly1305 veya AES-256-GCM
-- Key management: ilk sürümde ayrı protected key; OpenBao/KMS uyumlu abstraction
-- Hermes entegrasyonu: MCP server veya Hermes custom tool
+- Encryption: libsodium XChaCha20-Poly1305 or AES-256-GCM
+- Key management: separate protected key; OpenBao/KMS-compatible abstraction
+- Hermes integration: MCP server or Hermes custom tool
 - Validation: JSON Schema
-- Migrations: Alembic
+- Migrations: Prisma Migrate
 
 ## 4. Veritabanı şeması
 
