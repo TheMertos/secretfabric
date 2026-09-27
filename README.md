@@ -136,13 +136,7 @@ secretfabric-web: 3000
 postgres:          127.0.0.1:5432
 ```
 
-Current tailnet URL:
-
-```text
-https://[deployment-hostname-removed]:8443/
-```
-
-The 8443 endpoint is tailnet-only. The default Tailscale HTTPS root remains reserved for Hermes.
+The application is intended to be published behind a tailnet-only HTTPS endpoint or an operator-owned reverse proxy. The deployment hostname is intentionally not committed to the repository.
 
 ## Security
 
