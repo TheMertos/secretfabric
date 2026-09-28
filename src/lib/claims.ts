@@ -6,6 +6,8 @@ import { getSchema } from "./schema-catalog";
 
 const CLAIM_TTL_SECONDS = 900;
 const DEFAULT_ACCOUNT = "mert-personal";
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
+const ALLOWED_DOCUMENT_TYPES = new Set(["image/jpeg", "image/png", "application/pdf"]);
 
 type CreateClaimInput = {
   name: string;
@@ -28,6 +30,19 @@ function setPath(root: Record<string, unknown>, path: string, value: unknown) {
       current = current[part] as Record<string, unknown>;
     }
   });
+}
+
+function validateDocumentAttachments(value: unknown): boolean {
+  if (Array.isArray(value)) return value.every(validateDocumentAttachments);
+  if (!value || typeof value !== "object") return true;
+  const record = value as Record<string, unknown>;
+  if ("contentBase64" in record) {
+    if (typeof record.name !== "string" || typeof record.type !== "string" || typeof record.contentBase64 !== "string") return false;
+    if (!ALLOWED_DOCUMENT_TYPES.has(record.type) || record.contentBase64.length > Math.ceil(MAX_DOCUMENT_SIZE / 3) * 4 + 4) return false;
+    const decoded = Buffer.from(record.contentBase64, "base64");
+    return decoded.length > 0 && decoded.length <= MAX_DOCUMENT_SIZE;
+  }
+  return Object.values(record).every(validateDocumentAttachments);
 }
 
 async function getDefaultAccount() {
@@ -100,6 +115,7 @@ export async function getClaimForm(token: string) {
 export async function completeClaim(token: string, data: Record<string, unknown>) {
   const claim = await getClaim(token);
   if (!claim) return false;
+  if (!validateDocumentAttachments(data)) return false;
   const metadata = (claim.resource.metadata ?? {}) as { prefill?: Record<string, string> };
   const payload: Record<string, unknown> = {};
   Object.entries(metadata.prefill ?? {}).forEach(([path, value]) => setPath(payload, path, value));

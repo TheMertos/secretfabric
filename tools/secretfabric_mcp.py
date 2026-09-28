@@ -13,6 +13,8 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 BASE_URL = os.environ.get("SECRET_FABRIC_URL", "http://127.0.0.1:3000").rstrip("/")
+PUBLIC_URL = os.environ.get("SECRET_FABRIC_PUBLIC_URL", BASE_URL).rstrip("/")
+API_TOKEN = os.environ.get("SECRET_FABRIC_API_TOKEN")
 mcp = MCPServer(name="secretfabric", version="0.1.0")
 
 
@@ -22,7 +24,10 @@ def request(path: str, method: str = "GET", payload: dict[str, Any] | None = Non
         f"{BASE_URL}{path}",
         data=body,
         method=method,
-        headers={"content-type": "application/json"},
+        headers={
+            "content-type": "application/json",
+            **({"authorization": f"Bearer {API_TOKEN}"} if API_TOKEN else {}),
+        },
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
@@ -58,16 +63,18 @@ def secretfabric_create_claim(
     Prefill only non-sensitive known fields. Never put passwords, tokens,
     private keys or other secret values in prefill.
     """
-    return request(
+    payload: dict[str, Any] = {"name": name, "type": schema_type, "prefill": prefill or {}}
+    if provider is not None:
+        payload["provider"] = provider
+    result = request(
         "/api/claims",
         method="POST",
-        payload={
-            "name": name,
-            "type": schema_type,
-            "provider": provider,
-            "prefill": prefill or {},
-        },
+        payload=payload,
     )
+    if isinstance(result, dict) and isinstance(result.get("claimUrl"), str):
+        claim_url = result["claimUrl"]
+        result["claimUrl"] = f"{PUBLIC_URL}{claim_url}" if claim_url.startswith("/") else claim_url
+    return result
 
 
 @mcp.tool()

@@ -5,10 +5,11 @@ import { Alert, Button, Card, Select, Stack, Text, TextInput, Textarea, Title } 
 import { FieldSchema } from "@/lib/schema-catalog";
 
 const BASE_PATH = "";
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 
 type ClaimMeta = { name: string; type: string; fields: FieldSchema[] };
 
-function setPath(root: Record<string, unknown>, path: string, value: string) {
+function setPath(root: Record<string, unknown>, path: string, value: unknown) {
   const parts = path.split(".");
   let current = root;
   parts.forEach((part, index) => {
@@ -42,7 +43,16 @@ export default function ClaimPage({ params }: { params: Promise<{ token: string 
     const data: Record<string, unknown> = {};
     for (const field of meta.fields) {
       const value = new FormData(event.currentTarget).get(field.path);
-      if (typeof value === "string" && value.length > 0) setPath(data, field.path, value);
+      if (value instanceof File && value.size > 0) {
+        if (value.size > MAX_DOCUMENT_SIZE || !["image/jpeg", "image/png", "application/pdf"].includes(value.type)) {
+          setStatus("error");
+          return;
+        }
+        const bytes = new Uint8Array(await value.arrayBuffer());
+        let binary = "";
+        bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+        setPath(data, field.path, { name: value.name, type: value.type, contentBase64: btoa(binary) });
+      } else if (typeof value === "string" && value.length > 0) setPath(data, field.path, value);
     }
     const response = await fetch(`${BASE_PATH}/api/claims/${token}`, {
       method: "POST",
@@ -87,7 +97,8 @@ export default function ClaimPage({ params }: { params: Promise<{ token: string 
               );
               if (field.input === "textarea") return <Textarea key={field.path} {...common} autosize minRows={4} />;
               if (field.input === "select") return <Select key={field.path} name={field.path} label={field.label} data={field.options ?? []} defaultValue={value || null} required={field.required} />;
-              return <TextInput key={field.path} {...common} type={field.input === "port" ? "number" : field.input === "url" ? "url" : "text"} />;
+              if (field.input === "file") return <label key={field.path}>{field.label}<input name={field.path} type="file" accept="image/jpeg,image/png,application/pdf" /></label>;
+              return <TextInput key={field.path} {...common} type={field.input === "port" ? "number" : field.input === "url" ? "url" : field.input === "date" ? "date" : "text"} />;
             })}
             <Button type="submit">Save encrypted secret</Button>
           </Stack>

@@ -44,7 +44,7 @@ Completed `website-login` claims create an atomic `VaultSyncJob` outbox record. 
 
 ## Schema catalog
 
-The current catalog includes 23 protocol/resource types:
+The current catalog includes 24 protocol/resource types:
 
 ```text
 email
@@ -69,10 +69,11 @@ tls-certificate
 website-login
 domain-dns
 web-service
+personal-profile
 custom
 ```
 
-Website-oriented schemas include login credentials, MFA/TOTP/recovery data, domain/DNS provider accounts and generic SaaS accounts. Sensitive fields are claim-only and are never prefilled by Hermes.
+Website-oriented schemas include login credentials, MFA/TOTP/recovery data, domain/DNS provider accounts and generic SaaS accounts. The `personal-profile` schema stores personal contact data, citizenship country, postal address, passport, ID card, driver's license and up to three residence permits. Passport, ID card and driver's license records each support number, issuing country, expiry date and front/back document uploads. Each document upload accepts JPG, PNG or PDF files up to 10 MB. All personal-profile fields are sensitive, claim-only and never prefilled by Hermes.
 
 ## Development
 

@@ -1,7 +1,7 @@
 export type FieldSchema = {
   path: string;
   label: string;
-  input: "text" | "password" | "hostname" | "port" | "url" | "textarea" | "select";
+  input: "text" | "password" | "hostname" | "port" | "url" | "textarea" | "select" | "date" | "file";
   required?: boolean;
   sensitive?: boolean;
   claimOnly?: boolean;
@@ -310,6 +310,59 @@ export const schemaCatalog: ResourceSchema[] = [
       secretField("api.key", "API key"),
       { path: "plan", label: "Plan", input: "text" },
       { path: "notes", label: "Notes", input: "textarea" },
+    ],
+  },
+  {
+    type: "personal-profile",
+    label: "Personal Profile",
+    description: "Personal identity, contact and address data",
+    fields: [
+      { path: "person.givenName", label: "Given name", input: "text", sensitive: true, claimOnly: true },
+      { path: "person.familyName", label: "Family name", input: "text", sensitive: true, claimOnly: true },
+      { path: "person.dateOfBirth", label: "Date of birth", input: "date", sensitive: true, claimOnly: true },
+      { path: "person.nationality", label: "Citizenship country", input: "text", sensitive: true, claimOnly: true },
+      { path: "contact.email", label: "Personal email", input: "text", sensitive: true, claimOnly: true },
+      { path: "contact.phone", label: "Phone number", input: "text", sensitive: true, claimOnly: true },
+      { path: "address.street", label: "Street", input: "text", sensitive: true, claimOnly: true },
+      { path: "address.houseNumber", label: "House number", input: "text", sensitive: true, claimOnly: true },
+      { path: "address.postalCode", label: "Postal code", input: "text", sensitive: true, claimOnly: true },
+      { path: "address.city", label: "City", input: "text", sensitive: true, claimOnly: true },
+      { path: "address.state", label: "State / region", input: "text", sensitive: true, claimOnly: true },
+      { path: "address.country", label: "Country", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.passport.number", label: "Passport number", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.passport.issuingCountry", label: "Passport issuing country", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.passport.expiresAt", label: "Passport expiry date", input: "date", sensitive: true, claimOnly: true },
+      { path: "identity.passport.frontImage", label: "Passport — identity page", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.passport.additionalPage", label: "Passport — additional page", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.idCard.number", label: "ID card number", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.idCard.issuingCountry", label: "ID card issuing country", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.idCard.expiresAt", label: "ID card expiry date", input: "date", sensitive: true, claimOnly: true },
+      { path: "identity.idCard.frontImage", label: "ID card — front image", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.idCard.backImage", label: "ID card — back image", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.driversLicense.number", label: "Driver's license number", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.driversLicense.issuingCountry", label: "Driver's license issuing country", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.driversLicense.expiresAt", label: "Driver's license expiry date", input: "date", sensitive: true, claimOnly: true },
+      { path: "identity.driversLicense.frontImage", label: "Driver's license — front image", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.driversLicense.backImage", label: "Driver's license — back image", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.0.type", label: "Residence permit 1 — type", input: "select", options: ["residence-permit", "permanent-residence-permit", "EU-residence-card"], sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.0.number", label: "Residence permit 1 — number", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.0.issuingCountry", label: "Residence permit 1 — issuing country", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.0.expiresAt", label: "Residence permit 1 — expiry date", input: "date", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.0.frontImage", label: "Residence permit 1 — front image", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.0.backImage", label: "Residence permit 1 — back image", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.1.type", label: "Residence permit 2 — type", input: "select", options: ["residence-permit", "permanent-residence-permit", "EU-residence-card"], sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.1.number", label: "Residence permit 2 — number", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.1.issuingCountry", label: "Residence permit 2 — issuing country", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.1.expiresAt", label: "Residence permit 2 — expiry date", input: "date", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.1.frontImage", label: "Residence permit 2 — front image", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.1.backImage", label: "Residence permit 2 — back image", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.2.type", label: "Residence permit 3 — type", input: "select", options: ["residence-permit", "permanent-residence-permit", "EU-residence-card"], sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.2.number", label: "Residence permit 3 — number", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.2.issuingCountry", label: "Residence permit 3 — issuing country", input: "text", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.2.expiresAt", label: "Residence permit 3 — expiry date", input: "date", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.2.frontImage", label: "Residence permit 3 — front image", input: "file", sensitive: true, claimOnly: true },
+      { path: "identity.residencePermits.2.backImage", label: "Residence permit 3 — back image", input: "file", sensitive: true, claimOnly: true },
+      { path: "notes", label: "Notes", input: "textarea", sensitive: true, claimOnly: true },
     ],
   },
   {

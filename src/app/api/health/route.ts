@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-export function GET() {
-  return NextResponse.json({ status: "ok", service: "secretfabric" });
+export async function GET() {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return NextResponse.json({ status: "ok", service: "secretfabric", database: "ok" });
+  } catch {
+    return NextResponse.json({ status: "degraded", service: "secretfabric", database: "unavailable" }, { status: 503 });
+  }
 }

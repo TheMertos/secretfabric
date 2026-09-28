@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClaim } from "@/lib/claims";
 import { z } from "zod";
+import { isApiRequestAuthorized } from "@/lib/api-auth";
 
 const createClaimSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -10,7 +11,14 @@ const createClaimSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const parsed = createClaimSchema.safeParse(await request.json());
+  if (!isApiRequestAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const parsed = createClaimSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
   try {

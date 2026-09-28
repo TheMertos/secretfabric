@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { completeClaim, getClaimForm, revokeClaim } from "@/lib/claims";
+import { isApiRequestAuthorized } from "@/lib/api-auth";
 
 export async function GET(_request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
@@ -10,12 +11,20 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
 
 export async function POST(request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
-  const accepted = await completeClaim(token, (await request.json()) as Record<string, unknown>);
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  const accepted = await completeClaim(token, body as Record<string, unknown>);
   if (!accepted) return NextResponse.json({ error: "Claim expired or already used" }, { status: 410 });
   return NextResponse.json({ status: "claimed" });
 }
 
 export async function DELETE(_request: Request, context: { params: Promise<{ token: string }> }) {
+  if (!isApiRequestAuthorized(_request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { token } = await context.params;
   const revoked = await revokeClaim(token);
   if (!revoked) return NextResponse.json({ error: "Claim not found, expired, used or already revoked" }, { status: 404 });

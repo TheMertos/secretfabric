@@ -21,6 +21,7 @@ Sistem yalnızca kullanıcı adı/parola saklamamalı; farklı protokoller, ente
 - Tool/adapter tabanlı secret kullanımı
 - Audit log
 - Secret expiry ve rotation altyapısı
+- Kişisel profil kaydı: iletişim, adres, pasaport, kimlik kartı ve ehliyet bilgileri
 
 ### 2.2 Kapsam dışı veya sonraki faz
 
@@ -191,6 +192,10 @@ Sistem nested field path’leri bazında hassasiyet belirleyebilmelidir.
 - `smtp.username`: restricted
 - `smtp.password`: secret, claim-only
 - `private_key`: secret, tool-only
+- `personal-profile.*`: kişisel veri, claim-only; AI context'ine expose edilmez
+- `personal-profile.identity.passport.*`: pasaport numarası, veren ülke, geçerlilik tarihi ve kimlik/ek sayfa dosyaları claim-only tutulur
+- `personal-profile.identity.idCard.*` ve `personal-profile.identity.driversLicense.*`: belge numarası, veren ülke, geçerlilik tarihi ve ön/arka yüz dosyaları claim-only tutulur
+- `personal-profile.identity.residencePermits.*`: oturum kartı bilgileri ve belge dosyaları, claim-only; dosya başına 10 MB sınırı
 
 ### FR-011 — Hermes entegrasyonu
 
