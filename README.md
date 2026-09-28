@@ -18,6 +18,7 @@ Implemented with a full-stack Next.js application:
 - AES-256-GCM encrypted resource versions
 - Tailscale HTTPS deployment
 - Hermes MCP bridge
+- Automatic website-login sync to the local Hermes encrypted browser vault
 
 ## User flow
 
@@ -38,6 +39,8 @@ SecretFabric stores the encrypted resource in PostgreSQL
 ```
 
 The user does not create secrets from the dashboard or select schemas manually. The dashboard is informational/admin-oriented; claim forms are reached through links created by Hermes.
+
+Completed `website-login` claims create an atomic `VaultSyncJob` outbox record. The host-side `tools/vault_sync_worker.py` consumes those jobs and upserts the login into Hermes VaultStore without exposing decrypted values to chat, logs, or tool output. See [`docs/secretfabric-hermes-vault-sync.md`](docs/secretfabric-hermes-vault-sync.md).
 
 ## Schema catalog
 

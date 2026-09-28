@@ -129,6 +129,13 @@ export async function completeClaim(token: string, data: Record<string, unknown>
       where: { id: claim.resourceId },
       data: { currentVersion: nextVersion },
     });
+    await tx.vaultSyncJob.create({
+      data: {
+        resourceId: claim.resourceId,
+        version: nextVersion,
+        status: "pending",
+      },
+    });
     return true;
   });
   return updated;

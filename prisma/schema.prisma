@@ -50,6 +50,7 @@ model Resource {
   versions        ResourceVersion[]
   shares          ResourceShare[]
   claims          Claim[]
+  vaultSyncJobs   VaultSyncJob[]
   @@unique([accountId, name])
   @@index([accountId, resourceType])
 }
@@ -92,6 +93,23 @@ model Claim {
   createdBy       String?
   createdAt       DateTime  @default(now())
   resource        Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model VaultSyncJob {
+  id          String    @id @default(uuid()) @db.Uuid
+  resourceId  String    @db.Uuid
+  version     Int
+  vaultItemId String?
+  status      String    @default("pending")
+  attempts    Int       @default(0)
+  lastError   String?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  resource    Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, version])
+  @@index([status, createdAt])
 }
 
 model AuditEvent {
