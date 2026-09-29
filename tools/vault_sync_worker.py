@@ -116,6 +116,11 @@ def sync_job(job_id: str) -> dict[str, str]:
         raise ValueError("resource type is not supported by the Hermes browser vault")
 
     payload = decrypt_payload(ciphertext, nonce)
+    # SecretFabric stores schema data under the encrypted `data` envelope.
+    # Keep the worker compatible with the canonical resource shape while
+    # accepting the legacy top-level shape used by older records.
+    if isinstance(payload.get("data"), dict):
+        payload = payload["data"]
     site = payload.get("site") or {}
     account = payload.get("account") or {}
     mfa = payload.get("mfa") or {}

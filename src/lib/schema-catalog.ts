@@ -42,6 +42,19 @@ export const schemaCatalog: ResourceSchema[] = [
     ],
   },
   {
+    type: "caldav",
+    label: "CalDAV Calendar",
+    description: "CalDAV calendar account credential (mailbox.org, iCloud, Nextcloud, generic CalDAV)",
+    fields: [
+      { path: "identity.email", label: "Account email", input: "text", required: true },
+      { path: "server.baseUrl", label: "CalDAV base URL", input: "url", required: true },
+      { path: "server.calendarPath", label: "Calendar collection path", input: "text" },
+      { path: "auth.username", label: "Username", input: "text", required: true },
+      secretField("auth.password", "Password / app password"),
+      { path: "notes", label: "Notes", input: "textarea" },
+    ],
+  },
+  {
     type: "ssh",
     label: "SSH Server",
     description: "SSH/SFTP connection credential",
