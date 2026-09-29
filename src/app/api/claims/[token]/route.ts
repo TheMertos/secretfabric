@@ -18,7 +18,8 @@ export async function POST(request: Request, context: { params: Promise<{ token:
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-  const accepted = await completeClaim(token, body as Record<string, unknown>);
+  const submitted = "data" in body && body.data && typeof body.data === "object" ? body.data : body;
+  const accepted = await completeClaim(token, submitted as Record<string, unknown>);
   if (!accepted) return NextResponse.json({ error: "Claim expired or already used" }, { status: 410 });
   return NextResponse.json({ status: "claimed" });
 }
