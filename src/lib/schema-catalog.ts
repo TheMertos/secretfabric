@@ -50,7 +50,7 @@ export const schemaCatalog: ResourceSchema[] = [
       { path: "server.baseUrl", label: "CalDAV base URL", input: "url", required: true },
       { path: "server.calendarPath", label: "Calendar collection path", input: "text" },
       { path: "auth.username", label: "Username", input: "text", required: true },
-      secretField("auth.password", "Password / app password"),
+      { path: "auth.password", label: "Password / app password", input: "password", required: true, sensitive: true, claimOnly: true },
       { path: "notes", label: "Notes", input: "textarea" },
     ],
   },
