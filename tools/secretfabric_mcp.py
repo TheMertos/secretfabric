@@ -6,11 +6,21 @@ Secret values are never printed by this bridge.
 
 import json
 import os
+import sys
 import urllib.error
 import urllib.request
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
+_TOOLS_DIR = Path(__file__).resolve().parent
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+
+from hermes_profile_principal import (
+    HermesProfilePrincipalError,
+    resolve_trusted_principal_from_env,
+)
 from mcp.server.mcpserver import MCPServer
 
 BASE_URL = os.environ.get("SECRET_FABRIC_URL", "http://127.0.0.1:3000").rstrip("/")
@@ -19,19 +29,15 @@ API_TOKEN = os.environ.get("SECRET_FABRIC_API_TOKEN")
 mcp = MCPServer(name="secretfabric", version="0.1.0")
 
 HERMES_PRINCIPAL_HEADER = "x-hermes-principal"
-_MISSING_PRINCIPAL = "SecretFabric MCP requires HERMES_INSTANCE_NAME (trusted principal)"
+_MISSING_PRINCIPAL = "SecretFabric MCP requires HERMES_HOME (Hermes profile context)"
 
 
 def resolve_trusted_principal(env: Mapping[str, str] | None = None) -> str:
-    """Return trimmed HERMES_INSTANCE_NAME or raise when missing/blank."""
-    source = env if env is not None else os.environ
-    raw = source.get("HERMES_INSTANCE_NAME")
-    if raw is None:
-        raise RuntimeError(_MISSING_PRINCIPAL)
-    principal = raw.strip()
-    if not principal:
-        raise RuntimeError(_MISSING_PRINCIPAL)
-    return principal
+    """Derive trusted principal from inherited HERMES_HOME only."""
+    try:
+        return resolve_trusted_principal_from_env(env)
+    except HermesProfilePrincipalError as exc:
+        raise RuntimeError(f"{_MISSING_PRINCIPAL}: {exc}") from exc
 
 
 def request(path: str, method: str = "GET", payload: dict[str, Any] | None = None) -> Any:

@@ -1,5 +1,5 @@
 -- Principal scoping uses existing BotIdentity.externalSubject and AccountMembership.subject.
--- Map each Hermes instance (HERMES_INSTANCE_NAME) to an account via BotIdentity, for example:
+-- Map each Hermes profile principal to an account via BotIdentity, for example:
 -- INSERT INTO "BotIdentity" ("id", "accountId", "name", "externalSubject", "status")
 -- SELECT gen_random_uuid(), a.id, 'hermes-main', 'hermes-main', 'active'
 -- FROM "Account" a WHERE a.slug = 'mert-personal';

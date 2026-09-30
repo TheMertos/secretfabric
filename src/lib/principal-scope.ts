@@ -8,7 +8,7 @@ export type PrincipalContext = {
 
 /**
  * Resolves a trusted principal to an account via BotIdentity, membership, or account slug.
- * @param principal Trusted principal name (e.g. HERMES_INSTANCE_NAME).
+ * @param principal Trusted principal name (Hermes profile principal).
  * @returns Scoped context or null when unmapped.
  */
 export async function resolvePrincipalContext(principal: string): Promise<PrincipalContext | null> {
