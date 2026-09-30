@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { completeClaim, getClaimForm, revokeClaim } from "@/lib/claims";
-import { isApiRequestAuthorized } from "@/lib/api-auth";
+import { authorizeControlPlaneRequest } from "@/lib/control-plane-auth";
 
 export async function GET(_request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
@@ -24,10 +24,11 @@ export async function POST(request: Request, context: { params: Promise<{ token:
   return NextResponse.json({ status: "claimed" });
 }
 
-export async function DELETE(_request: Request, context: { params: Promise<{ token: string }> }) {
-  if (!isApiRequestAuthorized(_request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function DELETE(request: Request, context: { params: Promise<{ token: string }> }) {
+  const auth = await authorizeControlPlaneRequest(request);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { token } = await context.params;
-  const revoked = await revokeClaim(token);
+  const revoked = await revokeClaim(auth.ctx, token);
   if (!revoked) return NextResponse.json({ error: "Claim not found, expired, used or already revoked" }, { status: 404 });
   return NextResponse.json({ status: "revoked" });
 }

@@ -127,6 +127,8 @@ secretfabric_revoke_claim
 
 The bridge creates claims and revokes links; it does not expose unrestricted secret values.
 
+Hermes must set `HERMES_INSTANCE_NAME` (non-empty after trim) in the MCP process environment. Every API call sends that value as the `x-hermes-principal` header. The bridge does not read `SECRET_FABRIC_PRINCIPAL` and does not accept a principal from MCP tool arguments.
+
 ## Docker and Tailscale
 
 ```bash

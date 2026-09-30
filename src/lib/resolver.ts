@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "./prisma";
 import { decryptJson } from "./crypto";
+import { assertPrincipalCanAccessResource, type PrincipalContext } from "./principal-scope";
 
 const ALLOWED_PURPOSES = new Set(["imap-sync", "imap-list-mailboxes", "smtp-send", "caldav-sync"]);
 const ALLOWED_PATHS = new Set([
@@ -14,9 +15,15 @@ function readPath(value: unknown, path: string) {
   return path.split(".").reduce((current, part) => current && typeof current === "object" ? (current as Record<string, unknown>)[part] : undefined, value);
 }
 
-export async function resolveScopedResource(input: { resourceId: string; purpose: string; fieldPaths: string[]; actor?: string }) {
+export async function resolveScopedResource(input: {
+  ctx: PrincipalContext;
+  resourceId: string;
+  purpose: string;
+  fieldPaths: string[];
+}) {
   if (!ALLOWED_PURPOSES.has(input.purpose)) throw new Error("purpose_not_allowed");
   if (!input.fieldPaths.length || input.fieldPaths.some((path) => !ALLOWED_PATHS.has(path))) throw new Error("field_path_not_allowed");
+  await assertPrincipalCanAccessResource(input.ctx, input.resourceId, input.purpose);
   const resource = await prisma.resource.findUnique({
     where: { id: input.resourceId },
     include: { versions: { orderBy: { version: "desc" }, take: 1 } },
@@ -25,6 +32,16 @@ export async function resolveScopedResource(input: { resourceId: string; purpose
   const payload = decryptJson(Buffer.from(resource.versions[0].encryptedPayload), Buffer.from(resource.versions[0].payloadNonce));
   const projection = Object.fromEntries(input.fieldPaths.map((path) => [path, readPath(payload, path)]));
   const requestId = randomUUID();
-  await prisma.auditEvent.create({ data: { actor: input.actor ?? "agentmail", consumer: "agentmail", resourceId: resource.id, operation: input.purpose, fieldPaths: input.fieldPaths, result: "success", requestId } });
+  await prisma.auditEvent.create({
+    data: {
+      actor: input.ctx.principal,
+      consumer: input.ctx.principal,
+      resourceId: resource.id,
+      operation: input.purpose,
+      fieldPaths: input.fieldPaths,
+      result: "success",
+      requestId,
+    },
+  });
   return { requestId, resourceId: resource.id, version: resource.versions[0].version, expiresInSeconds: 300, fields: projection };
 }

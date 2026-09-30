@@ -8,6 +8,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
@@ -17,8 +18,26 @@ PUBLIC_URL = os.environ.get("SECRET_FABRIC_PUBLIC_URL", BASE_URL).rstrip("/")
 API_TOKEN = os.environ.get("SECRET_FABRIC_API_TOKEN")
 mcp = MCPServer(name="secretfabric", version="0.1.0")
 
+HERMES_PRINCIPAL_HEADER = "x-hermes-principal"
+_MISSING_PRINCIPAL = "SecretFabric MCP requires HERMES_INSTANCE_NAME (trusted principal)"
+
+
+def resolve_trusted_principal(env: Mapping[str, str] | None = None) -> str:
+    """Return trimmed HERMES_INSTANCE_NAME or raise when missing/blank."""
+    source = env if env is not None else os.environ
+    raw = source.get("HERMES_INSTANCE_NAME")
+    if raw is None:
+        raise RuntimeError(_MISSING_PRINCIPAL)
+    principal = raw.strip()
+    if not principal:
+        raise RuntimeError(_MISSING_PRINCIPAL)
+    return principal
+
 
 def request(path: str, method: str = "GET", payload: dict[str, Any] | None = None) -> Any:
+    principal = resolve_trusted_principal()
+    if not API_TOKEN:
+        raise RuntimeError("SecretFabric MCP requires SECRET_FABRIC_API_TOKEN")
     body = None if payload is None else json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         f"{BASE_URL}{path}",
@@ -26,7 +45,8 @@ def request(path: str, method: str = "GET", payload: dict[str, Any] | None = Non
         method=method,
         headers={
             "content-type": "application/json",
-            **({"authorization": f"Bearer {API_TOKEN}"} if API_TOKEN else {}),
+            "authorization": f"Bearer {API_TOKEN}",
+            HERMES_PRINCIPAL_HEADER: principal,
         },
     )
     try:

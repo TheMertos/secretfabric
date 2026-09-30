@@ -4,8 +4,10 @@ import { prisma } from "./prisma";
 import { encryptJson } from "./crypto";
 import { getSchema } from "./schema-catalog";
 
+import type { PrincipalContext } from "./principal-scope";
+import { assertPrincipalOwnsClaimToken } from "./principal-scope";
+
 const CLAIM_TTL_SECONDS = 900;
-const DEFAULT_ACCOUNT = "mert-personal";
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const ALLOWED_DOCUMENT_TYPES = new Set(["image/jpeg", "image/png", "application/pdf"]);
 
@@ -45,36 +47,28 @@ function validateDocumentAttachments(value: unknown): boolean {
   return Object.values(record).every(validateDocumentAttachments);
 }
 
-async function getDefaultAccount() {
-  return prisma.account.upsert({
-    where: { slug: DEFAULT_ACCOUNT },
-    update: {},
-    create: { slug: DEFAULT_ACCOUNT, displayName: "Mert Personal" },
-  });
-}
-
-export async function createClaim(input: CreateClaimInput) {
+export async function createClaim(ctx: PrincipalContext, input: CreateClaimInput) {
   if (!getSchema(input.type)) throw new Error("Unknown schema type");
-  const account = await getDefaultAccount();
+  const accountId = ctx.accountId;
   const token = randomBytes(32).toString("base64url");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + CLAIM_TTL_SECONDS * 1000);
   const resource = await prisma.resource.upsert({
-    where: { accountId_name: { accountId: account.id, name: input.name } },
+    where: { accountId_name: { accountId, name: input.name } },
     update: {
       resourceType: input.type,
       metadata: { provider: input.provider ?? null, prefill: input.prefill ?? {} },
       status: "active",
     },
     create: {
-      accountId: account.id,
+      accountId,
       resourceType: input.type,
       name: input.name,
       metadata: { provider: input.provider ?? null, prefill: input.prefill ?? {} },
     },
   });
   await prisma.claim.create({
-    data: { resourceId: resource.id, tokenHash: hashToken(token), expiresAt, createdBy: "hermes" },
+    data: { resourceId: resource.id, tokenHash: hashToken(token), expiresAt, createdBy: ctx.principal },
   });
   return { token, name: input.name, type: input.type, expiresInSeconds: CLAIM_TTL_SECONDS };
 }
@@ -88,9 +82,17 @@ export async function getClaim(token: string) {
   return claim;
 }
 
-export async function revokeClaim(token: string) {
+export async function revokeClaim(ctx: PrincipalContext, token: string) {
+  const tokenHash = hashToken(token);
+  try {
+    await assertPrincipalOwnsClaimToken(ctx, tokenHash);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "revoke_failed";
+    if (code === "principal_forbidden" || code === "claim_not_found") return false;
+    throw error;
+  }
   const result = await prisma.claim.updateMany({
-    where: { tokenHash: hashToken(token), usedAt: null, revokedAt: null },
+    where: { tokenHash, usedAt: null, revokedAt: null },
     data: { revokedAt: new Date() },
   });
   return result.count === 1;
