@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
+import { readHealth } from "@/lib/health";
 import { prisma } from "@/lib/prisma";
 
+/** Reports process health after a SQLite-only probe. */
 export async function GET() {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    return NextResponse.json({ status: "ok", service: "secretfabric", database: "ok" });
-  } catch {
-    return NextResponse.json({ status: "degraded", service: "secretfabric", database: "unavailable" }, { status: 503 });
-  }
+  const health = await readHealth(() => prisma.$queryRaw`SELECT sqlite_version() AS v`);
+  return NextResponse.json(health.body, { status: health.httpStatus });
 }

@@ -295,7 +295,7 @@ Başarısız claim denemeleri rate-limit edilmelidir.
 
 ### SEC-007
 
-Root encryption key Docker Compose YAML’ında, Git deposunda veya PostgreSQL’de tutulmamalıdır.
+Root encryption key `/etc/secretfabric/secretfabric.env` dışında, Git deposunda veya veritabanında tutulmamalıdır.
 
 ### SEC-008
 
@@ -310,9 +310,9 @@ Backup’lar da encryption key’den bağımsız plaintext secret içermemelidir
 Önerilen başlangıç stack’i:
 
 - Backend: FastAPI
-- Database: PostgreSQL
-- Frontend: Next.js veya SvelteKit
-- Deployment: Docker Compose
+- Database: SQLite via Prisma
+- Frontend: Next.js + Mantine
+- Deployment: systemd native service
 - Network exposure: Tailscale Serve HTTPS
 - Encryption: XChaCha20-Poly1305 veya AES-256-GCM
 - Key management: başlangıçta ayrı protected key; production’da OpenBao/KMS uyumlu tasarım
@@ -321,7 +321,7 @@ Backup’lar da encryption key’den bağımsız plaintext secret içermemelidir
 ## 7. Non-functional gereksinimler
 
 - Uygulama tek sunucuda self-hosted çalışabilmelidir.
-- PostgreSQL backup/restore prosedürü bulunmalıdır.
+- SQLite backup/restore prosedürü bulunmalıdır.
 - Schema değişiklikleri versioned migration ile yapılmalıdır.
 - API idempotent operasyonları desteklemelidir.
 - Tüm mutation işlemleri audit edilebilir olmalıdır.
@@ -347,7 +347,7 @@ Backup’lar da encryption key’den bağımsız plaintext secret içermemelidir
 
 ### Faz 1 — Güvenli çekirdek
 
-- PostgreSQL
+- SQLite
 - Encrypted JSON payload
 - Schema registry
 - Dynamic claim form
@@ -438,21 +438,21 @@ Claim linkleri oluşturulduğu account/workspace scope’una göre sınırlandı
 
 Yönetim paneli Next.js ile geliştirilmeli ve server-side/API route güvenlik sınırları açık olmalıdır.
 
-### FR-027 — Container image
+### FR-027 — Native service
 
-Backend, frontend ve gerekiyorsa worker servisleri reproducible Docker image olarak build edilebilmelidir.
+Uygulama `deploy/secretfabric.service` ile host üzerinde Next.js olarak çalışmalıdır. Vault sync `deploy/secretfabric-vault-sync.service` ile ayrı çalışır.
 
-### FR-028 — Git tabanlı CI/CD
+### FR-028 — Git tabanlı kontroller
 
-Git server’daki push/tag işlemiyle test, image build, vulnerability scan ve Docker Hub push akışı çalışmalıdır.
+Push öncesi `yarn lint`, `yarn test`, Prisma SQLite doğrulaması ve `yarn build` çalışmalıdır.
 
-### FR-029 — Docker Hub image’ları
+### FR-029 — Harici anahtarlar
 
-Image’lar version tag, commit SHA ve güvenli bir `latest` stratejisiyle Docker Hub’da yayınlanmalıdır.
+`ENCRYPTION_KEY` ve `SECRET_FABRIC_API_TOKEN` repository dışında `/etc/secretfabric/secretfabric.env` içinde tutulmalıdır.
 
 ### FR-030 — Self-hosted deployment
 
-Son kullanıcı yalnızca Docker Compose veya benzeri deployment manifesti ile server üzerinde sistemi çalıştırabilmelidir.
+Son kullanıcı native systemd unit ve mutlak bir SQLite `DATABASE_URL` ile sistemi çalıştırabilmelidir.
 
 ## 12. Rules ve paylaşım gereksinimleri
 

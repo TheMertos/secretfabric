@@ -7,7 +7,7 @@ Sistem bağımsız bir Secret Broker olarak geliştirilecektir. Vaultwarden zoru
 Temel prensipler:
 
 - Secret payload’ları esnek JSON olarak modellenir.
-- Plaintext payload PostgreSQL’de tutulmaz.
+- Plaintext payload SQLite’de tutulmaz.
 - Schema’lar payload’ı sınırlamak için değil, form, validation ve tool kullanımını tanımlamak için kullanılır.
 - Hermes secret değerini doğrudan almaz.
 - Secret kullanımı policy kontrollü `secret_read` veya ilgili Hermes tool’u üzerinden yapılır.
@@ -33,7 +33,7 @@ Temel prensipler:
 └──────┬─────────────┬─────────┘
        │             │
 ┌──────▼──────┐ ┌────▼─────────┐
-│ PostgreSQL  │ │ Hermes tools / clients │
+│ SQLite      │ │ Hermes tools / clients │
 │ encrypted   │ │ Himalaya, kubectl, db  │
 │ payloads    │ │ HTTP/etc.     │
 └─────────────┘ └───────────────┘
@@ -47,9 +47,9 @@ Temel prensipler:
 ## 3. Önerilen teknoloji
 
 - Next.js App Router + Route Handlers
-- Database: PostgreSQL via Prisma
+- Database: SQLite via Prisma
 - Frontend: Next.js + Mantine
-- Deployment: Docker Compose
+- Deployment: systemd native service
 - HTTPS/network: Tailscale Serve HTTPS
 - Encryption: libsodium XChaCha20-Poly1305 or AES-256-GCM
 - Key management: separate protected key; OpenBao/KMS-compatible abstraction
@@ -518,18 +518,17 @@ Sonraki sürüm:
 ## 11. Deployment
 
 ```text
-Docker Compose:
-  secret-broker-api
-  secret-broker-ui
-  postgres
-  optional: openbao
+systemd:
+  secretfabric.service
+  secretfabric-vault-sync.service
+  SQLite at /var/lib/secretfabric/secretfabric.sqlite
 ```
 
-Tailscale Serve yalnızca UI/API container’ına yönlendirilir. PostgreSQL tailnet dışına port açmadan aynı Docker network içinde çalışır.
+Tailscale Serve veya eşdeğer bir reverse proxy yalnızca Next.js sürecine yönlendirilir. Veritabanı dosyası host üzerinde kalır ve tailnet’e port açmaz.
 
 Backup:
 
-- PostgreSQL backup alınır.
+- SQLite dosyasının yedeği alınır.
 - Encryption root key ayrı backup kanalında saklanır.
 - Backup ve key aynı yerde tutulmaz.
 - Restore işlemi test edilmeden backup başarılı kabul edilmez.
@@ -538,8 +537,8 @@ Backup:
 
 ### Sprint 1 — Çekirdek
 
-- Repository ve Docker Compose
-- PostgreSQL migration’ları
+- Repository ve native systemd unit
+- SQLite migration’ları
 - Secret encryption service
 - Secret metadata CRUD
 - Audit service
@@ -811,94 +810,33 @@ Alternatifler:
 
 Karar: MVP’de Mantine; ürünün görsel dili büyürse tasarım token’ları Mantine theme üzerinden merkezi yönetilir.
 
-## 15. Container ve CI/CD mimarisi
+## 15. Native servis
 
-### 15.1 Container’lar
+Çalışan kurulum Next.js ve SQLite’dir. Ayrıntı `docs/native-deployment.md` içindedir. Anahtarlar `/etc/secretfabric/secretfabric.env` dosyasında kalır. Repository bir container image veya Compose dosyası içermez.
 
-```text
-secret-broker-api
-secret-broker-web
-secret-broker-worker
-postgres
-optional: openbao
-```
-
-İlk MVP’de worker, API container içinde background process olarak başlayabilir; production’da ayrı container tercih edilir.
-
-### 15.2 Repository yapısı
+### 15.1 Süreçler
 
 ```text
-secret-manager/
-├── apps/
-│   ├── api/
-│   └── web/
-├── packages/
-│   ├── schema-types/
-│   └── shared-contracts/
-├── integrations/
-├── migrations/
-├── deploy/
-│   ├── docker-compose.yml
-│   ├── docker-compose.prod.yml
-│   └── tailscale/
-├── Dockerfile.api
-├── Dockerfile.web
-├── compose.yaml
-└── README.md
+secretfabric.service
+secretfabric-vault-sync.service
 ```
 
-### 15.3 Image stratejisi
+Vault sync ayrı bir host sürecidir ve SQLite outbox’ını okur.
 
-Docker Hub repository’leri:
+### 15.2 Kontroller
 
 ```text
-<dockerhub-user>/secret-manager-api
-<dockerhub-user>/secret-manager-web
-<dockerhub-user>/secret-manager-worker
+yarn lint
+yarn test
+DATABASE_URL='file:/tmp/secretfabric-dev.sqlite' yarn db:validate
+yarn build
+systemctl is-active secretfabric.service
+systemctl is-active secretfabric-vault-sync.service
 ```
-
-Tag’ler:
-
-```text
-v0.1.0       release tag
-sha-abc123   immutable commit tag
-main         development branch image
-latest       yalnızca stable release için
-```
-
-Her production image immutable digest ile deployment manifestine pinlenmelidir.
-
-### 15.4 CI pipeline
-
-Git server push/tag sonrası:
-
-1. Backend testleri
-2. Frontend typecheck/lint/test
-3. Schema validation testleri
-4. Migration testleri
-5. Docker image build
-6. Trivy veya eşdeğer vulnerability scan
-7. SBOM üretimi
-8. Registry login
-9. Docker Hub push
-10. Tag ve digest çıktısını artifact olarak yayınlama
-
-Docker Hub token CI secret olarak tutulmalı, repository içine yazılmamalıdır.
-
-### 15.5 Multi-stage Dockerfile prensipleri
-
-- Dependency install stage
-- Build stage
-- Minimal runtime stage
-- Non-root user
-- Read-only filesystem mümkün olduğunda
-- Healthcheck
-- Runtime secret’ları image içine koymama
-- `.dockerignore` ile `.env`, key ve local backup dışlama
 
 ## 17. Agent discovery ve dokümantasyon
 
-Bu container başka Hermes agent’lar tarafından kullanılırken yalnızca insan dokümantasyonuna güvenilmemelidir. Sistem kendini machine-readable biçimde tanıtmalıdır.
+Bu servis başka Hermes agent’lar tarafından kullanılırken yalnızca insan dokümantasyonuna güvenilmemelidir. Sistem kendini machine-readable biçimde tanıtmalıdır.
 
 ### 17.1 Public olmayan discovery endpoint’leri
 
@@ -1004,7 +942,7 @@ README.md
   create-claim-link.json
 ```
 
-Docker image içinde de `agent-guide.md` ve capability manifest bulunmalıdır; agent’ın repository’ye erişimi olmasa bile servisi anlayabilmesi gerekir.
+Native servis dizininde de `agent-guide.md` ve capability manifest bulunmalıdır; agent’ın repository’ye erişimi olmasa bile servisi anlayabilmesi gerekir.
 
 ### 17.5 İsimle keşif
 
@@ -1017,7 +955,7 @@ Agent önce manifest’i okur, sonra capability ve schema katalogunu alır. API 
 
 ## 18. Deployment ve image dokümantasyonu
 
-`agent-guide.md`, capability manifest ve OpenAPI specification Docker image içine dahil edilmelidir. Container repository’sindeki aynı dosyalar image build sırasında kopyalanmalı; image, repository erişimi olmayan başka bir Hermes agent’ın da servisi keşfedebilmesini sağlamalıdır.
+`agent-guide.md`, capability manifest ve OpenAPI specification native servisle birlikte yayınlanmalıdır. Aynı dosyalar çalışan host kurulumunda kalır; repository erişimi olmayan başka bir Hermes agent da servisi keşfedebilmelidir.
 
 ## 19. İlk kabul testi
 

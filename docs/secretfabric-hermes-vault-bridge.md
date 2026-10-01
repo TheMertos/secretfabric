@@ -4,15 +4,14 @@ This procedure transfers a completed website-login secret from SecretFabric into
 
 ## Preconditions
 
-- SecretFabric is running through Docker Compose.
-- `secretfabric-postgres-1` is healthy.
-- `secretfabric-web-1` is running.
+- The supported path is the native SQLite worker in `docs/secretfabric-hermes-vault-sync.md`.
+- The one-off container script has been removed. Do not read ciphertext with `docker exec`.
 - The resource has a completed `ResourceVersion`; a pending claim alone is not enough.
 - Hermes and SecretFabric run as the same local user/profile, or the bridge is adapted to the target `HERMES_HOME`.
 
 ## Data flow
 
-1. Read the latest encrypted `ResourceVersion` for the target resource inside the SecretFabric web container.
+1. The native vault-sync worker reads the latest encrypted `ResourceVersion` from SQLite.
 2. Decrypt it in-process with SecretFabric's `ENCRYPTION_KEY` using AES-256-GCM.
 3. Pass the plaintext only through an in-memory pipe to a short-lived local Python process.
 4. Extract `data.site.url`, `data.account.email`/`username`, and `data.account.password`.

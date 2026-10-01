@@ -1,6 +1,6 @@
 # SecretFabric → Hermes Vault automatic sync
 
-Completed `website-login` claims are queued in PostgreSQL and copied to the local Hermes encrypted browser vault by a host-side worker.
+Completed `website-login` claims are queued in SQLite and copied to the local Hermes encrypted browser vault by a host-side worker.
 
 ## Flow
 
@@ -23,15 +23,17 @@ Only `website-login` resources with an identifier and password are copied. Email
 
 ## Run once
 
-The worker requires the same `ENCRYPTION_KEY` used by the SecretFabric web container and a running PostgreSQL container:
+The worker requires the same `ENCRYPTION_KEY` as the native SecretFabric process and an absolute SQLite `DATABASE_URL`:
 
 ```bash
-ENCRYPTION_KEY='...' \
+set -a
+source /etc/secretfabric/secretfabric.env
+set +a
 HERMES_HOME=/home/mert/.hermes \
 python3 tools/vault_sync_worker.py --once
 ```
 
-Do not pass the encryption key on a command line in normal operation. Use the deployment environment file or systemd environment handling.
+Do not pass the encryption key on a command line. Use `/etc/secretfabric/secretfabric.env` or the systemd unit. A `postgresql://` URL fails closed.
 
 ## Install the host worker
 
@@ -44,7 +46,7 @@ sudo systemctl enable --now secretfabric-vault-sync
 sudo journalctl -u secretfabric-vault-sync -f
 ```
 
-The service uses `/home/mert/secretfabric/.env` for bootstrap values and writes to the profile-scoped Hermes vault under `/home/mert/.hermes/vault/`. The service user must be able to read the Hermes profile and invoke `docker exec` on the SecretFabric Postgres container.
+The service reads `/etc/secretfabric/secretfabric.env` and writes to the profile-scoped Hermes vault under `/home/mert/.hermes/vault/`. The service user must be able to read the Hermes profile and the SQLite file. PostgreSQL is not used by this worker.
 
 ## Verify without exposing secrets
 
