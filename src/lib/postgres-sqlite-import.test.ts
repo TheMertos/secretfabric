@@ -190,7 +190,7 @@ describe("postgres to sqlite import", () => {
       const audit = await prisma.auditEvent.findFirstOrThrow();
       const resource = await prisma.resource.findFirstOrThrow();
       expect(Buffer.from(version.encryptedPayload).toString("utf8")).toBe(`cipher:${SECRET}`);
-      expect(audit.id).toBe(BigInt(42));
+      expect(audit.id).toBe(42);
       expect(resource.metadata).toMatchObject({ note: SECRET });
       expect(resource.updatedAt.toISOString()).toBe("2026-01-02T03:04:05.000Z");
     } finally {

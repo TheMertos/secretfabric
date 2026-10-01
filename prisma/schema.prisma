@@ -117,7 +117,7 @@ model VaultSyncJob {
 }
 
 model AuditEvent {
-  id          BigInt   @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   timestamp   DateTime @default(now())
   actor       String
   consumer    String?

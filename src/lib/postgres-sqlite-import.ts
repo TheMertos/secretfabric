@@ -315,7 +315,7 @@ function normalizeRow(table: ImportTable, row: Record<string, unknown>): Record<
       continue;
     }
     if (table === "AuditEvent" && key === "id") {
-      normalized[key] = typeof value === "bigint" ? value : BigInt(String(value));
+      normalized[key] = Number(value);
       continue;
     }
     normalized[key] = value;
@@ -554,7 +554,7 @@ function jobInput(row: Record<string, unknown>): Prisma.VaultSyncJobCreateManyIn
  */
 function auditInput(row: Record<string, unknown>): Prisma.AuditEventCreateManyInput {
   return {
-    id: typeof row.id === "bigint" ? row.id : BigInt(String(row.id)),
+    id: Number(row.id),
     timestamp: asDate(row.timestamp),
     actor: String(row.actor),
     consumer: row.consumer == null ? null : String(row.consumer),
