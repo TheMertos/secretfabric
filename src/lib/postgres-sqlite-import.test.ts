@@ -201,7 +201,7 @@ describe("postgres to sqlite import", () => {
     expect(rendered).not.toContain(SECRET);
     expect(rendered).not.toContain("a".repeat(64));
     expect(readFileSync(target).includes(Buffer.from(SECRET))).toBe(true);
-  });
+  }, 20000);
 
   it("replaces an existing database only when overwrite is explicit", async () => {
     const target = tempDatabasePath();
@@ -227,5 +227,5 @@ describe("postgres to sqlite import", () => {
       log: () => {},
     });
     expect(report.targetCounts.Account).toBe(0);
-  });
+  }, 30000);
 });

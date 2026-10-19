@@ -125,7 +125,7 @@ export async function completeClaim(token: string, data: Record<string, unknown>
   const encrypted = encryptJson(payload);
   const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const marked = await tx.claim.updateMany({
-      where: { id: claim.id, usedAt: null, expiresAt: { gt: new Date() } },
+      where: { id: claim.id, usedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
       data: { usedAt: new Date() },
     });
     if (marked.count !== 1) return false;
