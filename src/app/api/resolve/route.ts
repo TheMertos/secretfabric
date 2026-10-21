@@ -5,17 +5,25 @@ import { resolveScopedResource } from "@/lib/resolver";
 
 const schema = z
   .object({
-    resourceId: z.string().uuid(),
-    purpose: z.enum(["imap-sync", "imap-list-mailboxes", "smtp-send", "caldav-sync"]),
+    resourceId: z.string().uuid().optional(),
+    resourceName: z.string().min(1).max(120).optional(),
+    purpose: z.string().min(1).max(120),
     fieldPaths: z.array(z.string()).min(1).max(20),
   })
-  .strict();
+  .strict()
+  .refine((value) => Boolean(value.resourceId || value.resourceName), {
+    message: "resourceId or resourceName is required",
+  });
 
 export async function POST(request: Request) {
   const auth = await authorizeControlPlaneRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
